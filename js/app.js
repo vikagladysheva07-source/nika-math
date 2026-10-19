@@ -138,7 +138,7 @@ VIEWS.setup = () => {
   const sc = S.school || { alg: 'lin_eq', geo: 'geo_theory' };
   return `<div class="wrap">
   <div class="setup-hero"><div class="logo">N</div><h1>Nika<span class="dotm">.math</span></h1><p>Ежедневная тренировка по математике. 50 задач в день, ответ и разбор — сразу.</p></div>
-  <div class="card"><h3>Что сейчас проходите в школе?</h3><p class="muted">От этого зависит, какие темы попадут в тренировку. Можно поменять в настройках.</p>
+  <div class="card"><h3 class="hq">Что сейчас проходите в школе?</h3><p class="muted">От этого зависит, какие темы попадут в тренировку. Можно поменять в настройках.</p>
     <label class="fld"><span>Алгебра</span><select id="s-alg">${sel('alg', sc.alg)}</select></label>
     <label class="fld"><span>Геометрия</span><select id="s-geo">${sel('geo', sc.geo)}</select></label>
   </div>
