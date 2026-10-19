@@ -172,6 +172,7 @@ sup{font-size:.62em;line-height:0}
 .setup-hero{text-align:center;padding:30px 10px 10px}
 .logo{width:76px;height:76px;margin:0 auto 14px;border-radius:24px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-size:44px;font-weight:900;display:grid;place-items:center;box-shadow:0 12px 30px rgba(109,74,255,.35)}
 .setup-hero h1{font-size:32px}
+.dotm{color:var(--accent)}
 .fld{display:flex;flex-direction:column;gap:6px;margin:12px 0}
 .fld span{font-size:13px;font-weight:600;color:var(--muted)}
 select{font:inherit;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:12px;min-height:48px;padding:0 12px;width:100%}

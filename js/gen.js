@@ -1,4 +1,4 @@
-/* Пятёрка — генераторы задач.
+/* Nika.math — генераторы задач.
    Каждый генератор: уровень (1..3) → задача
    {q, kind:'num'|'choice', ans:[[n,d],...], ansText, labels, opts, steps, hint, traps, fig, unit, frac} */
 (function (root) {

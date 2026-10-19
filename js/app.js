@@ -1,4 +1,4 @@
-/* Пятёрка — приложение */
+/* Nika.math — приложение */
 (function () {
 'use strict';
 const { SKILLS, BLOCKS, make, gcd } = window.PYAT;
@@ -137,7 +137,7 @@ VIEWS.setup = () => {
   const sel = (b, cur) => byBlock(b).map(s => `<option value="${s.id}" ${s.id === cur ? 'selected' : ''}>${esc(s.title)}</option>`).join('');
   const sc = S.school || { alg: 'lin_eq', geo: 'geo_theory' };
   return `<div class="wrap">
-  <div class="setup-hero"><div class="logo">5</div><h1>Пятёрка</h1><p>Ежедневная тренировка по математике. 50 задач в день, ответ и разбор — сразу.</p></div>
+  <div class="setup-hero"><div class="logo">N</div><h1>Nika<span class="dotm">.math</span></h1><p>Ежедневная тренировка по математике. 50 задач в день, ответ и разбор — сразу.</p></div>
   <div class="card"><h3>Что сейчас проходите в школе?</h3><p class="muted">От этого зависит, какие темы попадут в тренировку. Можно поменять в настройках.</p>
     <label class="fld"><span>Алгебра</span><select id="s-alg">${sel('alg', sc.alg)}</select></label>
     <label class="fld"><span>Геометрия</span><select id="s-geo">${sel('geo', sc.geo)}</select></label>
@@ -351,7 +351,7 @@ function reportText() {
   const wn = w.reduce((a, x) => a + x.n, 0), wc = w.reduce((a, x) => a + x.c, 0), wd = w.filter(x => x.n >= GOAL).length;
   const list = k => SKILLS.filter(s => status(s.id) === k).map(s => s.title);
   const gaps = list('gap'), ok = list('ok');
-  return `Пятёрка · отчёт ${NAME} · ${ruDate(today())}
+  return `Nika.math · отчёт · ${ruDate(today())}
 Сегодня: ${d.n} задач, верно ${d.n ? Math.round(100 * d.c / d.n) : 0}%
 За 7 дней: ${wn} задач, точность ${wn ? Math.round(100 * wc / wn) : 0}%, норма выполнена ${wd} из 7 дней
 Серия: ${streak()} дн.
