@@ -326,3 +326,4 @@ select,.fld input{background:var(--bg);border:1px solid var(--line-2);border-rad
 #toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));transform:translate(-50%,30px);opacity:0;background:#fff;color:#140F24;padding:12px 18px;border-radius:14px;font-size:15px;font-weight:650;transition:.25s;pointer-events:none;max-width:90vw;text-align:center;z-index:50}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 @media (max-width:360px){ .mascot-side{display:none} .hc{padding:0 9px} }
+.copybox{width:100%;min-height:180px;margin:8px 0;padding:12px;border-radius:14px;background:var(--bg);border:1px solid var(--line-2);color:var(--ink);font:14px/1.45 inherit;resize:none}

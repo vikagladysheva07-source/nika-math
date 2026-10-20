@@ -95,22 +95,22 @@ function render() {
   <p class="muted small center">Данные приходят с телефона Ники автоматически, когда она занимается.</p>
   </div>`;
   document.getElementById('rf').onclick = load;
-  app.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => pay(b.dataset.pay, +b.dataset.amt));
+  app.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => {
+    const row = b.closest('.wd');
+    row.insertAdjacentHTML('afterend', `<div class="pinrow"><p class="small muted">${R.pin ? 'Введи свой PIN, чтобы отметить выплату' : 'Придумай PIN (от 4 цифр). Им будешь отмечать выплаты — Нике его не говори.'}</p><div class="pinin"><input type="password" inputmode="numeric" autocomplete="off" placeholder="PIN"><button class="btn primary">Подтвердить</button></div><p class="small pinerr"></p></div>`);
+    b.disabled = true;
+    const box = row.nextElementSibling, inp = box.querySelector('input'); inp.focus();
+    box.querySelector('button').onclick = () => pay(b.dataset.pay, +b.dataset.amt, inp.value.trim(), box.querySelector('.pinerr'));
+  });
 }
 
-async function pay(id, amt) {
+async function pay(id, amt, pin, err) {
+  if (!pin || pin.length < 4) { err.textContent = 'PIN — минимум 4 цифры'; return; }
   try {
-    if (!R.pin) {
-      const p1 = prompt('Придумай PIN (от 4 цифр). Он нужен, чтобы отмечать выплаты: так Ника не сможет отметить их сама.');
-      if (!p1 || p1.length < 4) return;
-      await rpc('nm_set_pin', { p_k: K, p_pin: p1 }); R.pin = true;
-      await rpc('nm_mark_paid', { p_k: K, p_pin: p1, p_req: id, p_amt: amt });
-    } else {
-      const p = prompt(`Отметить выплату ${amt} ₽? Введи PIN:`); if (!p) return;
-      await rpc('nm_mark_paid', { p_k: K, p_pin: p, p_req: id, p_amt: amt });
-    }
+    if (!R.pin) { await rpc('nm_set_pin', { p_k: K, p_pin: pin }); R.pin = true; }
+    await rpc('nm_mark_paid', { p_k: K, p_pin: pin, p_req: id, p_amt: amt });
     load();
-  } catch (e) { alert(String(e.message).includes('bad pin') ? 'Неверный PIN' : 'Не получилось: ' + e.message); }
+  } catch (e) { err.textContent = String(e.message).includes('bad pin') ? 'Неверный PIN' : 'Не получилось, попробуй ещё раз'; }
 }
 
 if (K) load(); else askCode();

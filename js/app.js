@@ -683,7 +683,7 @@ sheet.addEventListener('click', e => {
     const r = { id: rid(8), d: today(), amt }; S.withdraw.push(r); S.coins -= amt; S.ledger.unshift({ d: today(), n: -amt, w: 'Обмен на деньги' });
     save(); push(); closeSheet(); render();
     const text = `Вика, запрос на выплату из Nika.math: ${amt} ₽ (${amt} баллов). Отметить выплату: ${parentLink()}`;
-    if (navigator.share) navigator.share({ text }).catch(() => {}); else toast('Запрос отправлен Вике');
+    share(text);
   }
 });
 sheet.addEventListener('submit', e => {
@@ -718,7 +718,8 @@ function reportText() {
 }
 async function share(text) {
   try { if (navigator.share) { await navigator.share({ text }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
-  try { await navigator.clipboard.writeText(text); toast('Скопировано — вставь в Телеграм'); } catch (e) { prompt('Скопируй:', text); }
+  try { await navigator.clipboard.writeText(text); toast('Скопировано — вставь в Телеграм'); }
+  catch (e) { openSheet(`<div class="sh-c"><h2>Скопируй и отправь Вике</h2><textarea class="copybox" readonly>${esc(text)}</textarea><button class="btn ghost big" data-sact="close">Готово</button></div>`); const t = sheet.querySelector('.copybox'); if (t) { t.focus(); t.select(); } }
 }
 function toast(msg) {
   let t = document.getElementById('toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
