@@ -65,7 +65,7 @@ function render() {
   const pending = (S.withdraw || []).filter(r => !paid.has(r.id)), done = (S.withdraw || []).filter(r => paid.has(r.id));
   const days = []; for (let i = 13; i >= 0; i--) days.push(addDays(td, -i));
   const mx = Math.max(Math.round(GOAL * 1.25), ...days.map(x => (S.days[x] || {}).n || 0));
-  const cur = (() => { for (const u of UNITS) for (const id of u.skills) if (status(S, id) !== 'ok') return { u, id }; return null; })();
+  const cur = (() => { for (const u of UNITS) for (const id of u.skills) if (status(S, id) !== 'ok' && !(S.mastered || {})[id]) return { u, id }; return null; })();
 
   app.innerHTML = `<div class="wrap">
   <div class="p-head"><div><h1>Ника · прогресс</h1><small>${updTxt}</small></div><button class="ibtn" id="rf" aria-label="Обновить"><svg viewBox="0 0 24 24" class="i"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button></div>
@@ -84,7 +84,7 @@ function render() {
   <div class="card"><h3>Последние 14 дней</h3><div class="bars"><div class="goal" style="bottom:${100 * GOAL / mx}%"><span>${GOAL}</span></div>${days.map(x => { const v = (S.days[x] || {}).n || 0; return `<div class="bcol"><div class="bv ${v >= GOAL ? 'full' : ''}" style="height:${100 * v / mx}%"></div><span>${+x.slice(8)}</span></div>`; }).join('')}</div></div>
 
   <div class="card"><h3>Путь</h3>${cur ? `<p>Сейчас: <b>${esc(T[cur.id])}</b> · ${esc(cur.u.title)}</p>` : '<p>Весь путь пройден.</p>'}
-    <div class="ups">${UNITS.map(u => { const dn = u.skills.filter(id => status(S, id) === 'ok').length; return `<div class="up"><span>${esc(u.title)}${(S.unitDone || {})[u.id] ? ' · сдан' : ''}</span><b>${dn}/${u.skills.length}</b><div class="mbar"><i style="width:${100 * dn / u.skills.length}%"></i></div></div>`; }).join('')}</div></div>
+    <div class="ups">${UNITS.map(u => { const dn = u.skills.filter(id => status(S, id) === 'ok' || (S.mastered || {})[id]).length; return `<div class="up"><span>${esc(u.title)}${(S.unitDone || {})[u.id] ? ' · сдан' : ''}</span><b>${dn}/${u.skills.length}</b><div class="mbar"><i style="width:${100 * dn / u.skills.length}%"></i></div></div>`; }).join('')}</div></div>
 
   ${topErr.length ? `<div class="card"><h3>Где больше всего ошибок за неделю</h3>${topErr.map(([id, n]) => `<div class="srow"><span>${esc(T[id])}</span><b>${n}</b></div>`).join('')}</div>` : ''}
 

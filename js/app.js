@@ -40,8 +40,9 @@ function status(id) {
   return 'learn';
 }
 const acc = id => { const s = S.sk[id]; if (!s || !s.h.length) return null; const h = s.h.slice(-10); return Math.round(100 * h.reduce((a, b) => a + b, 0) / h.length); };
+const passed = id => status(id) === 'ok' || !!S.mastered[id];   // пройденная на пути тема остаётся пройденной
 function mastery(id) {
-  const s = S.sk[id]; if (!s || !s.h.length) return 0; if (status(id) === 'ok') return 1;
+  const s = S.sk[id]; if (!s || !s.h.length) return 0; if (passed(id)) return 1;
   const h = s.h.slice(-10), a = h.reduce((x, y) => x + y, 0) / h.length;
   return Math.min(0.95, Math.min(1, s.h.length / 8) * Math.min(1, a / 0.85));
 }
@@ -129,7 +130,7 @@ function pathItems() {
   UNITS.forEach(u => {
     items.push({ t: 'unit', u });
     u.skills.forEach((id, k) => {
-      const done = status(id) === 'ok', state = done ? 'done' : prevDone ? 'current' : 'locked';
+      const done = passed(id), state = done ? 'done' : prevDone ? 'current' : 'locked';
       if (state === 'current' && !current) current = id;
       items.push({ t: 'node', id, u, k, state: state === 'current' && current !== id ? 'locked' : state });
       if (!done) prevDone = false;
@@ -322,7 +323,7 @@ function pathHTML() {
   const say = id => ({ gap: 'Тут был пробел — закроем вместе!', new: 'Новая тема. Сначала покажу, как решать.', learn: 'Почти освоено, добьём!' })[status(id)] || 'Вперёд!';
   for (const it of items) {
     if (it.t === 'unit') {
-      k = 0; const ids = it.u.skills, dn = ids.filter(id => status(id) === 'ok').length;
+      k = 0; const ids = it.u.skills, dn = ids.filter(passed).length;
       h += `<div class="ubox" style="--c:${it.u.color}"><div><small>Раздел ${UNITS.indexOf(it.u) + 1}</small><b>${it.u.title}</b><span>${it.u.sub}</span></div><div class="ubar"><i style="width:${100 * dn / ids.length}%"></i><em>${dn}/${ids.length}</em></div></div>`;
       continue;
     }
@@ -332,7 +333,7 @@ function pathHTML() {
       const ring = st0 !== 'done' && m > 0 ? `<svg class="nring" viewBox="0 0 92 92"><circle cx="46" cy="46" r="${R}" class="nr-bg"/><circle cx="46" cy="46" r="${R}" class="nr-fg" stroke-dasharray="${Cc}" stroke-dashoffset="${Cc * (1 - m)}"/></svg>` : '';
       h += `<div class="prow" style="--x:${off}px;--c:${it.u.color}">
         ${isCur ? `<div class="bubble">${say(it.id)}</div>` : ''}
-        <div class="nwrap">${ring}<button class="node ${st0} ${status(it.id)}" data-act="node" data-id="${it.id}">${st0 === 'done' ? I('check') : st0 === 'locked' ? `<span class="g">${GLYPH[SK[it.id].block]}</span>` : `<span class="g">${GLYPH[SK[it.id].block]}</span>`}</button>
+        <div class="nwrap">${ring}${st0 === 'done' && status(it.id) !== 'ok' ? `<span class="stale" title="Пора повторить">${I('redo')}</span>` : ''}<button class="node ${st0} ${status(it.id)}" data-act="node" data-id="${it.id}">${st0 === 'done' ? I('check') : st0 === 'locked' ? `<span class="g">${GLYPH[SK[it.id].block]}</span>` : `<span class="g">${GLYPH[SK[it.id].block]}</span>`}</button>
         ${isCur ? `<div class="mascot-side ${off >= 0 ? 'left' : 'right'}">${mascot(58, 'bounce')}</div>` : ''}</div>
         <div class="nlabel ${st0}">${esc(SK[it.id].title)}</div></div>`;
     } else if (it.t === 'chest') {
@@ -351,7 +352,7 @@ function nodeSheet(id) {
   const s = SK[id], it = pathItems().items.find(x => x.t === 'node' && x.id === id), m = Math.round(100 * mastery(id));
   if (it.state === 'locked') return openSheet(`<div class="sh-c">${I('lock')}<h3 class="hq">${esc(s.title)}</h3><p class="muted">Откроется, когда освоишь темы перед ней. Потренироваться можно уже сейчас — в разделе «Темы».</p><button class="btn ghost big" data-sact="topic" data-id="${id}">Открыть тему</button></div>`);
   openSheet(`<div class="sh-c"><span class="chip">${BL[s.block].title}</span><h2>${esc(s.title)}</h2>
-    <div class="mbar"><i style="width:${m}%"></i></div><p class="muted">${it.state === 'done' ? 'Тема освоена. Можно повторить и заработать ещё баллов.' : `Освоено на ${m}%. Чтобы пройти тему, нужно 85% верных ответов.`}</p>
+    <div class="mbar"><i style="width:${m}%"></i></div><p class="muted">${it.state === 'done' ? (status(id) === 'ok' ? 'Тема освоена. Можно повторить и заработать ещё баллов.' : 'Тема пройдена, но в последних задачах были ошибки. Пора повторить — точка на пути останется пройденной.') : `Освоено на ${m}%. Чтобы пройти тему, нужно 85% верных ответов.`}</p>
     <button class="btn primary big" data-sact="path-start" data-id="${id}">${it.state === 'done' ? 'Повторить' : 'Начать урок'} · 15 задач</button>
     <button class="btn ghost big" data-sact="topic" data-id="${id}">Теория и пример</button></div>`);
 }
@@ -485,7 +486,7 @@ VIEWS.summary = () => {
     `<div class="srow">${dot(id)}<span>${esc(SK[id].title)}</span><b>${Math.round(100 * v.c / v.n)}%</b><small>${v.c % 1 ? v.c.toFixed(1) : v.c}/${v.n}</small></div>`).join('');
   let title = s.kind === 'diag' ? 'Входной тест пройден' : s.kind === 'daily' ? 'Тренировка дня готова!' : 'Готово!';
   let msg = pct >= 85 ? 'Это уровень пятёрки. Так держать!' : pct >= 65 ? 'Хорошо! Ошибки показывают, что подтянуть.' : 'Ничего страшного. Теперь видно, где пробелы, — их и закроем.';
-  if (s.kind === 'path') { const ok = status(s.sk) === 'ok'; title = ok ? 'Тема освоена!' : 'Урок пройден'; msg = ok ? `«${SK[s.sk].title}» — готово. Следующая точка на пути открыта.` : `Освоено на ${Math.round(100 * mastery(s.sk))}%. Ещё урок — и тема будет пройдена.`; }
+  if (s.kind === 'path') { const ok = passed(s.sk); title = ok ? 'Тема освоена!' : 'Урок пройден'; msg = ok ? `«${SK[s.sk].title}» — готово. Следующая точка на пути открыта.` : `Освоено на ${Math.round(100 * mastery(s.sk))}%. Ещё урок — и тема будет пройдена.`; }
   const diagBox = s.kind === 'diag' ? `<div class="card"><h3>Что нашли</h3>${['gap', 'learn'].map(k => {
     const ids = [...new Set(s.res.map(r => r.sk))].filter(id => status(id) === k);
     return ids.length ? `<p><b>${k === 'gap' ? 'Пробелы' : 'Почти освоено'}:</b> ${ids.map(id => esc(SK[id].title)).join(', ')}</p>` : '';
