@@ -5,6 +5,7 @@ const { SKILLS, BLOCKS, make, gcd } = window.PYAT;
 const { UNITS, EASY, KEYS, MISTAKES, LEVELS, ACH } = window.NM_CONTENT;
 const KEY = 'pyaterka_v1', GOAL = 50, NAME = 'Ника';
 const RATE = 1, CAP = 3000, MIN_OUT = 300;       // 1 балл = 1 ₽, потолок в месяц, минимальный обмен
+const PIG_BASE = 100, PIG_STEP = 5, PIG_MAX = 150; // копилка дня: 100 ₽ + 5 ₽ за каждый день серии, максимум 150 ₽
 const SB = { url: 'https://amcbxjwgiqphqikzcxfj.supabase.co', key: 'sb_publishable_pDMx4w2cbHbuf7Y6cHiE2g_mFT8hlPB' };
 const SK = Object.fromEntries(SKILLS.map(s => [s.id, s]));
 const BL = Object.fromEntries(BLOCKS.map(b => [b.id, b]));
@@ -74,11 +75,22 @@ function streak() {
 /* ---------- экономика: баллы, уровни, достижения ---------- */
 const popQueue = [];
 const monthKey = () => today().slice(0, 7);
-function award(n, why) {
+function streakPrev() { let n = 0, d = addDays(today(), -1); while ((S.days[d] || {}).n >= GOAL) { n++; d = addDays(d, -1); } return n; }
+const dayLimit = () => Math.min(PIG_MAX, PIG_BASE + PIG_STEP * streakPrev());
+const dayGot = () => (S.earnedDay || {})[today()] || 0;
+const dayLeft = () => Math.max(0, dayLimit() - dayGot());
+// daily=true — обычные баллы за ответы, они идут в копилку дня; бонусы (достижения, темы, сундуки, контрольные) копилку не ограничивает
+function award(n, why, daily) {
   if (n <= 0) return 0;
   S.xp = (S.xp || 0) + n;
-  const m = monthKey(), got = S.earned[m] || 0, give = Math.min(n, Math.max(0, CAP - got));
+  const m = monthKey(), got = S.earned[m] || 0;
+  let give = Math.min(n, Math.max(0, CAP - got));
+  if (daily) {
+    const was = dayLeft(); give = Math.min(give, was);
+    if (was > 0 && was - give === 0) { const t = today(); S.pigFull = S.pigFull || {}; if (!S.pigFull[t]) { S.pigFull[t] = 1; popQueue.push({ kind: 'piggy', lim: dayLimit() }); } }
+  }
   if (give > 0) {
+    if (daily) { S.earnedDay = S.earnedDay || {}; S.earnedDay[today()] = dayGot() + give; }
     S.coins += give; S.earned[m] = got + give;
     S.ledger.unshift({ d: today(), n: give, w: why }); if (S.ledger.length > 200) S.ledger.length = 200;
     if (S.session && !S.session.done) S.session.got = (S.session.got || 0) + give;
@@ -262,6 +274,7 @@ const I = n => `<svg viewBox="0 0 24 24" class="i">${({
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>',
   chest: '<rect x="3" y="9" width="18" height="11" rx="2"/><path d="M3 13h18M5 9V7a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v2M11 12h2v3h-2z"/>',
+  pig: '<path d="M4 11.5C4 8 7.2 5.5 11 5.5c2 0 3.8.6 5 1.6L18.5 6v3.2c.8.7 1.3 1.5 1.5 2.3H21v3h-1.4c-.5 1-1.3 1.8-2.3 2.4V20h-2.6v-1.8c-.8.2-1.6.3-2.4.3s-1.6-.1-2.4-.3V20H7.3v-2.6C5.3 16.2 4 14 4 11.5z"/><path d="M9 5.8C9 4.3 10 3 11.5 3S14 4.3 14 5.8"/><circle cx="16" cy="10.5" r=".9"/>',
   star: '<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>',
 })[n] || ''}</svg>`;
 const GLYPH = { base: '½', alg: '𝑥', geo: '△', prob: '%' };
@@ -307,6 +320,7 @@ VIEWS.home = () => {
     <div class="ring sm"><svg viewBox="0 0 108 108"><circle cx="54" cy="54" r="${R0}" class="rbg"/><circle cx="54" cy="54" r="${R0}" class="rfg" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct)}"/></svg><div class="rin"><b>${d.n}</b><span>из ${GOAL}</span></div></div>
     <div class="dtext"><b>${d.n >= GOAL ? 'Норма дня выполнена' : 'Цель дня — 50 задач'}</b><span>${d.n ? `верно ${Math.round(100 * d.c / d.n)}% · ` : ''}${d.n >= GOAL ? 'можно отдыхать или копить баллы' : `ещё ${GOAL - d.n} до бонуса`}</span></div>
   </section>
+  ${piggyHTML()}
   ${main}
   <div class="quick">
     <button data-act="go" data-v="control">${I('clock')}<span>Контрольная</span></button>
@@ -316,6 +330,14 @@ VIEWS.home = () => {
   ${pathHTML()}
   </div>${nav('home')}`;
 };
+function piggyHTML() {
+  const lim = dayLimit(), got = dayGot(), full = got >= lim, sp = streakPrev();
+  return `<button class="piggy ${full ? 'full' : ''}" data-act="go" data-v="rewards">
+    <span class="pg-i">${I('pig')}</span>
+    <span class="pg-t"><b>${full ? 'Копилка дня полна!' : 'Копилка дня'}</b><small>${full ? 'Завтра — новая. Не прерывай серию, и она станет больше' : sp ? `серия ${sp} ${plural(sp, 'день', 'дня', 'дней')}: копилка +${PIG_STEP * Math.min(sp, (PIG_MAX - PIG_BASE) / PIG_STEP)} ₽` : 'каждый день серии добавляет +5 ₽'}</small></span>
+    <span class="pg-v"><b>${got}</b>/${lim} ₽</span>
+    <span class="pg-bar"><i style="width:${Math.min(100, 100 * got / lim)}%"></i></span></button>`;
+}
 function pathHTML() {
   if (!S.diag) return `<div class="path-empty card">${mascot(84, 'bounce')}<h3 class="hq">Здесь будет твой путь</h3><p class="muted">Пройди входной тест: я найду пробелы и выстрою темы по порядку — от самых важных к следующим. Как уровни в игре.</p><button class="btn primary" data-act="diag">Пройти тест · ≈30 задач</button></div>`;
   const { items, current } = pathItems(), OFF = [0, 52, 78, 52, 0, -52, -78, -52];
@@ -402,7 +424,7 @@ function keypad(exam) {
 const pick = a => a[Math.floor(Math.random() * a.length)];
 function feedback(p) {
   const r = ui.result, good = r.score > 0;
-  let h = `<div class="fb ${good ? 'good' : 'bad'}"><div class="fb-top"><div class="fb-h">${good ? (r.score === 1 ? pick(['Верно!', 'Точно!', 'Отлично!', 'Да, правильно!', 'Так держать!']) : 'Верно, но…') : r.gave ? 'Разбор решения' : 'Неверно'}</div>${r.got ? `<span class="plus">+${r.got} ${coin()}</span>` : ''}</div>`;
+  let h = `<div class="fb ${good ? 'good' : 'bad'}"><div class="fb-top"><div class="fb-h">${good ? (r.score === 1 ? pick(['Верно!', 'Точно!', 'Отлично!', 'Да, правильно!', 'Так держать!']) : 'Верно, но…') : r.gave ? 'Разбор решения' : 'Неверно'}</div>${r.got ? `<span class="plus">+${r.got} ${coin()}</span>` : r.pigFull ? `<span class="plus full">${I('pig')} копилка полна</span>` : ''}</div>`;
   if (r.note) h += `<p class="fb-note">${r.note}</p>`;
   if (!good && r.your) h += `<p>Твой ответ: <b class="strike">${r.your}</b></p>`;
   if (!good || r.score < 1) h += `<p>Правильный ответ: <b class="ans">${p.ansText}</b>${p.unit && p.kind === 'num' ? p.unit : ''}</p>`;
@@ -439,8 +461,9 @@ function finish(score, extra) {
   let got = 0;
   if (score === 1) {
     s.combo = (s.combo || 0) + 1; S.bestCombo = Math.max(S.bestCombo || 0, s.combo);
-    got += award(p.lv, 'Верные ответы');
-    if (s.combo % 10 === 0) { const g = award(10, `${s.combo} верных подряд`); got += g; popQueue.push({ kind: 'combo', n: s.combo, coins: g }); }
+    got += award(p.lv, 'Верные ответы', true);
+    if (s.combo % 10 === 0) { const g = award(10, `${s.combo} верных подряд`, true); got += g; popQueue.push({ kind: 'combo', n: s.combo, coins: g }); }
+    if (!got && dayLeft() === 0) extra.pigFull = true;
   } else s.combo = 0;
   checkMastery(p.sk); checkDay(); checkAch();
   if (score === 0 && s.kind !== 'diag' && !it.retry) s.queue.splice(Math.min(s.i + 4, s.queue.length), 0, task(p.sk, p.lv, { retry: true }));
@@ -527,6 +550,11 @@ VIEWS.rewards = () => {
   const reqs = S.withdraw.slice().reverse();
   return `<div class="wrap with-nav"><header class="top"><h2>Награды</h2><button class="ibtn" data-act="go" data-v="settings">${I('gear')}</button></header>
   <section class="wallet">${coin('big')}<div><small>Мои баллы</small><b>${fmtN(S.coins)}</b><span>= ${fmtN(S.coins * RATE)} ₽</span></div></section>
+  <div class="card pigcard"><div class="mrow"><span>${I('pig')}<span><b>Копилка дня</b><small>${dayGot()} из ${dayLimit()} ₽ сегодня</small></span></span></div>
+    <div class="mbar gold"><i style="width:${Math.min(100, 100 * dayGot() / dayLimit())}%"></i></div>
+    <p class="muted small">Баллы за ответы падают в копилку дня. Каждый день серии делает её больше на 5 ₽:</p>
+    <div class="pigsteps">${[0, 2, 4, 6, 8, 10].map(n => `<span class="${streakPrev() >= n && (n === 10 || streakPrev() < n + 2) ? 'on' : ''}"><b>${Math.min(PIG_MAX, PIG_BASE + PIG_STEP * n)} ₽</b><small>${n ? n + ' ' + plural(n, 'день', 'дня', 'дней') : 'старт'}</small></span>`).join('')}</div>
+    <p class="muted small">Бонусы за темы, сундуки, достижения и контрольные идут сверх копилки.</p></div>
   <div class="card"><div class="mrow"><span>Заработано в ${monthName()}</span><b>${fmtN(em)} / ${fmtN(CAP)}</b></div><div class="mbar gold"><i style="width:${100 * em / CAP}%"></i></div>
     ${em >= CAP ? '<p class="muted small">Лимит месяца набран. Опыт и уровни продолжают расти.</p>' : ''}
     <button class="btn primary big" data-act="withdraw" ${S.coins < MIN_OUT ? 'disabled' : ''}>Обменять на деньги</button>
@@ -534,7 +562,7 @@ VIEWS.rewards = () => {
     ${reqs.length ? reqs.map(r => `<div class="srow"><span>${ruDate(r.d)}</span><b>${fmtN(r.amt)} ₽</b><span class="chip ${paidSet.has(r.id) ? 'okc' : 'warn'}">${paidSet.has(r.id) ? 'выплачено' : 'ждёт'}</span></div>`).join('') : ''}</div>
   <div class="card lvl"><div class="mrow"><span>${mascot(44)}<span><b>${lv.name}</b><small>Уровень ${lv.i + 1} · ${fmtN(S.xp)} опыта</small></span></span><small>${LEVELS[lv.i + 1] ? 'до «' + LEVELS[lv.i + 1][1] + '» ' + fmtN(lv.nxt - S.xp) : 'максимум!'}</small></div><div class="mbar"><i style="width:${100 * lv.pct}%"></i></div></div>
   <div class="card"><h3>Как заработать</h3><div class="earn">
-    <div><b>+1…3</b><span>верный ответ с первой попытки (★ / ★★ / ★★★)</span></div>
+    <div><b>+1…3</b><span>верный ответ с первой попытки (★ / ★★ / ★★★) — в копилку дня</span></div>
     <div><b>+10</b><span>каждые 10 верных подряд</span></div>
     <div><b>+20</b><span>норма дня (50 задач, точность от 70%)</span></div>
     <div><b>+50</b><span>тема освоена на пути</span></div>
@@ -696,7 +724,8 @@ function showPops() {
   if (pop.className === 'open' || !popQueue.length || view === 'session' && ui.state !== 'done' && !(S.session && S.session.done)) return;
   const p = popQueue.shift();
   const t = { ach: ['Достижение!', p.title, p.desc], master: ['Тема освоена!', p.title, 'Точка на пути пройдена'], day: [p.good ? 'Норма дня!' : 'Норма выполнена', '50 задач решено', p.good ? `Точность ${p.acc}%` : `Точность ${p.acc}%: для полного бонуса нужно от 70%`],
-    combo: [`${p.n} подряд!`, 'Без единой ошибки', 'Серия продолжается'], chest: ['Сундук открыт!', 'Награда за пройденные темы', 'Идём дальше по пути'] }[p.kind];
+    combo: [`${p.n} подряд!`, 'Без единой ошибки', 'Серия продолжается'],
+    piggy: ['Копилка полна!', `${p.lim} ₽ за сегодня`, (S.days[today()] || {}).n >= GOAL ? `Завтра копилка будет ${Math.min(PIG_MAX, p.lim + PIG_STEP)} ₽ — если не прервёшь серию. Можно решать дальше ради опыта и уровня.` : 'Добей норму в 50 задач — и завтра копилка станет больше. Опыт за задачи продолжает расти.'], chest: ['Сундук открыт!', 'Награда за пройденные темы', 'Идём дальше по пути'] }[p.kind];
   pop.innerHTML = `<div class="pop-bg" data-pact="close"></div><div class="pop-card">${confetti()}${mascot(84, 'jump')}<small>${t[0]}</small><h2>${esc(t[1])}</h2><p>${t[2]}</p>${p.coins ? `<div class="pop-coins">+${p.coins} ${coin()}</div>` : ''}<button class="btn primary big" data-pact="close">Класс!</button></div>`;
   pop.className = 'open';
 }
@@ -711,7 +740,7 @@ function reportText() {
   return `Nika.math · отчёт · ${ruDate(today())}
 Сегодня: ${d.n} ${plural(d.n, 'задача', 'задачи', 'задач')}, верно ${d.n ? Math.round(100 * d.c / d.n) : 0}%
 За 7 дней: ${wn} ${plural(wn, 'задача', 'задачи', 'задач')}, точность ${wn ? Math.round(100 * wc / wn) : 0}%, норма ${wd} из 7 дней
-Серия: ${streak()} дн. · Баллы: ${fmtN(S.coins)}
+Серия: ${streak()} дн. · Баллы: ${fmtN(S.coins)} · Копилка сегодня: ${dayGot()}/${dayLimit()} ₽
 Освоено тем: ${list('ok').length} из ${SKILLS.length}
 Пробелы: ${gaps.length ? gaps.join(', ') : 'нет'}
 Весь прогресс: ${parentLink()}`;

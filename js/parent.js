@@ -76,6 +76,7 @@ function render() {
 
   <div class="card"><h3>Деньги</h3>
     <div class="mrow"><span>Баланс баллов</span><b>${fmtN(S.coins || 0)} ₽</b></div>
+    <div class="mrow"><span>Копилка сегодня</span><b>${((S.earnedDay || {})[td] || 0)} / ${Math.min(150, 100 + 5 * (() => { let n = 0, x = addDays(td, -1); while ((S.days[x] || {}).n >= GOAL) { n++; x = addDays(x, -1); } return n; })())} ₽</b></div>
     <div class="mrow"><span>Заработано в этом месяце</span><b>${fmtN(em)} / ${fmtN(CAP)} ₽</b></div><div class="mbar gold"><i style="width:${100 * em / CAP}%"></i></div>
     ${pending.length ? `<p><b>Ждут выплаты:</b></p>${pending.map(r => `<div class="wd"><span>${ruDate(r.d)}</span><b>${fmtN(r.amt)} ₽</b><button class="btn primary" data-pay="${r.id}" data-amt="${r.amt}">Выплачено</button></div>`).join('')}` : '<p class="muted small">Запросов на выплату нет.</p>'}
     ${done.length ? `<p class="muted small">Выплачено всего: ${fmtN(done.reduce((a, r) => a + r.amt, 0))} ₽</p>` : ''}
