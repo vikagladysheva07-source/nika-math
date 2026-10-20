@@ -709,8 +709,8 @@ function reportText() {
   const wn = w.reduce((a, x) => a + x.n, 0), wc = w.reduce((a, x) => a + x.c, 0), wd = w.filter(x => x.n >= GOAL).length;
   const list = k => SKILLS.filter(s => status(s.id) === k).map(s => s.title), gaps = list('gap');
   return `Nika.math · отчёт · ${ruDate(today())}
-Сегодня: ${d.n} задач, верно ${d.n ? Math.round(100 * d.c / d.n) : 0}%
-За 7 дней: ${wn} задач, точность ${wn ? Math.round(100 * wc / wn) : 0}%, норма ${wd} из 7 дней
+Сегодня: ${d.n} ${plural(d.n, 'задача', 'задачи', 'задач')}, верно ${d.n ? Math.round(100 * d.c / d.n) : 0}%
+За 7 дней: ${wn} ${plural(wn, 'задача', 'задачи', 'задач')}, точность ${wn ? Math.round(100 * wc / wn) : 0}%, норма ${wd} из 7 дней
 Серия: ${streak()} дн. · Баллы: ${fmtN(S.coins)}
 Освоено тем: ${list('ok').length} из ${SKILLS.length}
 Пробелы: ${gaps.length ? gaps.join(', ') : 'нет'}
